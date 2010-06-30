@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
+<?xml version="1.0" encoding="UTF-8" ?><!--
 /*+**********************************************************************************
  * The Initial Developer of the Original Code is vtiger.
  * All Rights Reserved.
@@ -8,14 +7,16 @@
  ************************************************************************************/
 -->
 <Module>
-  <ModulePrefs title="vtiger CRM Gadget" height="200" width="200" author="vtiger" author_email="info@vtiger.com" description="iGoogle Gadget for vtiger CRM" thumbnail="http://www.vtiger.com/images/vtigerlogo.jpg">
+  <ModulePrefs title="vtiger CRM Gadget" 
+  height="200" width="200" author="vtiger" author_email="info@vtiger.com" description="iGoogle Gadget for vtiger CRM"
+  thumbnail="http://www.vtiger.com/images/vtigerlogo.jpg">
   	<Require feature="tabs"/>
   	<Require feature="dynamic-height"/>
   </ModulePrefs>
   
   <UserPref name="_vturl" display_name="CRM URL" required="true"/>
-  <UserPref name="_vtusername" display_name="Username" required="true"/>
-  <UserPref name="_vtpassword" display_name="Access Key" required="true"/>  
+  <UserPref name="_vtusername" display_name="Username" required="true" />
+  <UserPref name="_vtpassword" display_name="Access Key" required="true" />  
   
   <Content type="html">
 	<![CDATA[
@@ -90,25 +91,319 @@ return str;}</script>
  * The Initial Developer of the Original Code is vtiger.
  * All Rights Reserved.
  ************************************************************************************/
-var vtiger={wsclient:{}};vtiger.wsclient={_activeURL:false,_activeUser:'',_activePass:'',_activeSession:'',_activeUserId:'',_activeCallback:false,_lastResponse:false,_lastError:false,_serviceURL:function(url){if(vtiger.wsclient._activeURL==false&&typeof(url)!='undefined'){vtiger.wsclient._activeURL=url+'/webservice.php';}
-return vtiger.wsclient._activeURL;},_urlParams:function(params){var urlParameters='';for(var k in params){urlParameters+=k+'='+encodeURIComponent(params[k])+'&';}
-return urlParameters;},_invokeURL:function(params,callback,type){if(typeof(type)=='undefined'||!type)type='GET';if(typeof(params)=='undefined'||!params)params={};params['__rand_overcomecache__']=(new Date()).getTime();var url=vtiger.wsclient._serviceURL();var urlparams=vtiger.wsclient._urlParams(params);if(type=='GET'){params[gadgets.io.RequestParameters.METHOD]=gadgets.io.MethodType.GET;url+='?'+urlparams;}else{params[gadgets.io.RequestParameters.POST_DATA]=urlparams;params[gadgets.io.RequestParameters.METHOD]=gadgets.io.MethodType.POST;}
-gadgets.io.makeRequest(url,callback,params);},_invokeAPI:function(operation,params,type){vtiger.wsclient._lastResponse=vtiger.wsclient._lastError=false;if(typeof(params)=='undefined'||!params)params={};params['operation']=operation;params['sessionName']=vtiger.wsclient._activeSession;vtiger.wsclient._invokeURL(params,vtiger.wsclient._invokeAPICallback,type);},_invokeAPICallback:function(responseObject){vtiger.wsclient._setResponse(responseObject.data);vtiger.wsclient._invokeCallback();},_invokeCallback:function(){if(vtiger.wsclient._activeCallback){var callback=vtiger.wsclient._activeCallback;vtiger.wsclient._activeCallback=false;callback();}},response:function(){return vtiger.wsclient._lastResponse;},error:function(){return vtiger.wsclient._lastError;},_setResponse:function(responseText){var responseJSON=gadgets.json.parse(responseText);if(responseJSON){if(responseJSON['success']){vtiger.wsclient._lastResponse=responseJSON['result'];}else{vtiger.wsclient._lastError=responseJSON['error'];}}else{vtiger.wsclient._lastError=responseText;}},init:function(url,user,pass,callback){vtiger.wsclient.login(url,user,pass);vtiger.wsclient._activeCallback=callback;},login:function(url,user,pass){vtiger.wsclient._activeUser=user;vtiger.wsclient._activePass=pass;vtiger.wsclient._serviceURL(url);vtiger.wsclient._invokeURL({'operation':'getchallenge','username':user},vtiger.wsclient._loginChallenge);},_loginChallenge:function(responseObject){var responseJSON=gadgets.json.parse(responseObject['data']);var responseToken=responseJSON['result']['token'];vtiger.wsclient._invokeURL({'operation':'login','username':vtiger.wsclient._activeUser,'token':responseToken,'accessKey':hex_md5(responseToken+vtiger.wsclient._activePass)},vtiger.wsclient._login,'POST');},_login:function(responseObject){var responseJSON=gadgets.json.parse(responseObject['data']);vtiger.wsclient._activeSession=responseJSON['result']['sessionName'];vtiger.wsclient._activeUserId=responseJSON['result']['userId'];vtiger.wsclient._invokeCallback();},listTypes:function(callback){vtiger.wsclient._activeCallback=callback;vtiger.wsclient._invokeAPI('listtypes');},describe:function(name,callback){vtiger.wsclient_activeCallback=callback;vtiger.wsclient._invokeAPI('describe',{'element':name});},fetchRecord:function(record,callback){vtiger.wsclient._activeCallback=callback;vtiger.wsclient._invokeAPI('retrieve',{'id':record});},query:function(q,callback){vtiger.wsclient._activeCallback=callback;vtiger.wsclient._invokeAPI('query',{'query':q});}}</script>
+ 
+/** vtiger namespaced webservice client using gadgets API to connect remote servers */
+var vtiger = { wsclient : {} };
+vtiger.wsclient = {
+	_activeURL : false,
+	_activeUser: '',
+	_activePass: '',
+	_activeSession:'',
+	_activeUserId: '',
+	
+	_activeCallback : false,
+	_lastResponse : false,
+	_lastError : false,
+	
+	_serviceURL : function(url) {
+		if (vtiger.wsclient._activeURL == false && typeof(url) != 'undefined') {
+			vtiger.wsclient._activeURL = url + '/webservice.php';
+		}					
+		return vtiger.wsclient._activeURL;
+	},
+	_urlParams : function( params ) {
+		var urlParameters = '';
+		for(var k in params) { urlParameters += k + '=' + encodeURIComponent(params[k]) + '&'; }
+		return urlParameters;
+	},
+	_invokeURL : function( params, callback, type ) {
+		if (typeof(type) == 'undefined' || !type) type = 'GET';
+		if (typeof(params) == 'undefined' || !params) params = {};
+		
+		/** Avoid Gadgets caching the data */
+		params['__rand_overcomecache__'] = (new Date()).getTime();
+		
+		var url = vtiger.wsclient._serviceURL();
+		var urlparams = vtiger.wsclient._urlParams(params);
+		if (type == 'GET') {
+			params[gadgets.io.RequestParameters.METHOD] = gadgets.io.MethodType.GET;
+			url += '?' + urlparams;
+		} else {
+			params[gadgets.io.RequestParameters.POST_DATA] = urlparams;
+			params[gadgets.io.RequestParameters.METHOD] = gadgets.io.MethodType.POST;
+		}
+		//params[gadgets.io.RequestParameters.CONTENT_TYPE] = gadgets.io.ContentType.JSON;
+
+		gadgets.io.makeRequest( url, callback, params );
+	},
+	
+	_invokeAPI : function(operation, params, type) {
+		vtiger.wsclient._lastResponse = vtiger.wsclient._lastError = false;
+		
+		if (typeof(params) == 'undefined' || !params) params = {};
+		params['operation'] = operation;
+		params['sessionName'] = vtiger.wsclient._activeSession;
+		vtiger.wsclient._invokeURL( params, vtiger.wsclient._invokeAPICallback, type );		
+	},
+	
+	_invokeAPICallback : function(responseObject) {
+		vtiger.wsclient._setResponse(responseObject.data);
+		vtiger.wsclient._invokeCallback();
+	},
+	
+	_invokeCallback : function() {
+		if (vtiger.wsclient._activeCallback) {
+			var callback = vtiger.wsclient._activeCallback;
+			vtiger.wsclient._activeCallback = false;
+			callback();
+		}
+	},
+	
+	response : function() {
+		return vtiger.wsclient._lastResponse;
+	},
+	error : function() {
+		return vtiger.wsclient._lastError;
+	},
+	_setResponse: function(responseText) {
+		var responseJSON = gadgets.json.parse(responseText);
+		if (responseJSON) {
+			if(responseJSON['success']) {
+				vtiger.wsclient._lastResponse = responseJSON['result'];
+			} else {
+				vtiger.wsclient._lastError = responseJSON['error'];
+			}
+		} else {
+			vtiger.wsclient._lastError = responseText;
+		}
+	},						
+	
+	init : function(url, user, pass, callback) {
+		vtiger.wsclient.login( url, user, pass );
+		vtiger.wsclient._activeCallback = callback;
+	},
+	login : function(url, user, pass) {
+		vtiger.wsclient._activeUser = user;
+		vtiger.wsclient._activePass = pass;
+		vtiger.wsclient._serviceURL(url);
+		vtiger.wsclient._invokeURL( { 'operation':'getchallenge', 'username':user }, vtiger.wsclient._loginChallenge );
+	},
+	
+	_loginChallenge : function(responseObject) {
+		var responseJSON = gadgets.json.parse(responseObject['data']);
+		var responseToken = responseJSON['result']['token'];
+		vtiger.wsclient._invokeURL( { 'operation':'login', 'username':vtiger.wsclient._activeUser, 'token':responseToken,
+		'accessKey':hex_md5(responseToken+vtiger.wsclient._activePass)}, vtiger.wsclient._login, 'POST');
+	},
+	_login : function(responseObject) {
+		var responseJSON = gadgets.json.parse(responseObject['data']);
+		vtiger.wsclient._activeSession = responseJSON['result']['sessionName'];
+		vtiger.wsclient._activeUserId = responseJSON['result']['userId'];
+		vtiger.wsclient._invokeCallback();
+	},
+	
+	listTypes: function(callback) {
+		vtiger.wsclient._activeCallback = callback;
+		vtiger.wsclient._invokeAPI( 'listtypes' );
+	},
+	describe : function(name, callback) {
+		vtiger.wsclient_activeCallback = callback;
+		vtiger.wsclient._invokeAPI( 'describe', { 'element' : name } );
+	},
+	fetchRecord : function(record, callback) {
+		vtiger.wsclient._activeCallback = callback;
+		vtiger.wsclient._invokeAPI( 'retrieve', { 'id' : record } );
+	},
+	query : function(q, callback) {
+		vtiger.wsclient._activeCallback = callback;
+		vtiger.wsclient._invokeAPI( 'query', { 'query': q } );
+	}
+}</script>
       <script type="text/javascript">/*+**********************************************************************************
  * The Initial Developer of the Original Code is vtiger.
  * All Rights Reserved.
  ************************************************************************************/
-vtiger.gadget={sprintf:function(){var printString=arguments[0];for(var i=1;i<arguments.length;++i){printString=printString.replace(/(%[a-z]+)/,arguments[i]);}
-return printString;},_recordSelectionInfo:function(moduleName,buildQuery){if(typeof(buildQuery)=='undefined')buildQuery=false;var querymap={'primary':false,'secondary':false,'query':false};switch(moduleName){case'Calendar':querymap['primary']='subject';querymap['secondary']='taskstatus,date_start,time_start';break;case'Events':querymap['primary']='subject';querymap['secondary']='eventstatus,date_start,time_start';break;case'Leads':querymap['primary']='lastname, firstname';querymap['secondary']='company';break;case'Contacts':querymap['primary']='lastname, firstname';querymap['secondary']='email';break;case'Accounts':querymap['primary']='accountname';querymap['secondary']='website';break;case'Potentials':querymap['primary']='potentialname';querymap['secondary']='sales_stage,amount';break;case'HelpDesk':querymap['primary']='ticket_title';querymap['secondary']='ticketstatus';break;}
-if(querymap['primary']){var selectClause=querymap['primary'];var orderbyClause="ORDER BY modifiedtime DESC;";if(querymap['secondary']){selectClause+=','+querymap['secondary'];}
-querymap['query']=vtiger.gadget.sprintf("SELECT %s FROM %s %s",selectClause,moduleName,orderbyClause);}
-return querymap;},_describeInfo:false,_moduleNames:function(){return vtiger.gadget._describeInfo['types'];},_moduleLabel:function(name){return vtiger.gadget._describeInfo['information'][name]['label'];},_moduleNameWithLabel:function(label){for(var moduleName in vtiger.gadget._describeInfo['information']){if(vtiger.gadget._describeInfo['information'][moduleName]['label']==label){return moduleName;}}
-return false;},_query:function(moduleName){var queryInfo=vtiger.gadget._recordSelectionInfo(moduleName,true);if(queryInfo)return queryInfo['query'];return false;},_recordRowUI:function(moduleName,record){var recordId=record['id'].split('x')[1];var selectionInfo=vtiger.gadget._recordSelectionInfo(moduleName);var recordDetailViewLink=vtiger.gadget._getPref('_vturl')+
-vtiger.gadget.sprintf('/index.php?module=%s&action=DetailView&record=%s',moduleName,recordId);var titleFields=selectionInfo['primary'].split(',');var subtitleFields=selectionInfo['secondary']?selectionInfo['secondary'].split(','):[];var recordTitleValue='',recordSubTitleValue='';for(var index=0;index<titleFields.length;++index)recordTitleValue+=' '+record[titleFields[index].trim()];for(var index=0;index<subtitleFields.length;++index)recordSubTitleValue+=' '+record[subtitleFields[index].trim()];var ui='';if(subtitleFields.length){ui=vtiger.gadget.sprintf("<tr><td width='90%' align='left'><a href='%s' target='_blank'>%s</a></td><td align='right' width='10%' nowrap='nowrap'>%s</td></tr>",recordDetailViewLink,recordTitleValue.trim(),recordSubTitleValue.trim());}else{ui=vtiger.gadget.sprintf("<tr><td width='100%' align='left'><a href='%s' target='_blank'>%s</a></td></tr>",recordDetailViewLink,recordTitleValue.trim());}
-return ui;},_messageDiv:function(state){var message_div=$('#message_div');if(message_div.length==0){message_div=document.createElement('div');message_div.id='message_div';message_div.style.position='absolute';message_div.style.padding='2px';message_div.style.margin=0;message_div.style.top=message_div.style.right='1px';message_div.style.backgroundColor='#AF0400';message_div.style.color='white';message_div.style.fontSize='11px';document.body.appendChild(message_div);message_div=$('#message_div');}
-if(state)message_div.show();else message_div.hide();return message_div;},showMessage:function(message){vtiger.gadget._messageDiv(true).html(message);},dismissMessage:function(){vtiger.gadget._messageDiv(false).html('');},init:function(){vtiger.gadget.showMessage("Loading...");vtiger.wsclient.listTypes(vtiger.gadget.prepareTabs);},_pref:false,_getPref:function(key){if(vtiger.gadget._pref==false)vtiger.gadget._pref=new gadgets.Prefs();return vtiger.gadget._pref.getString(key);},_tabs:false,prepareTabs:function(){vtiger.gadget._describeInfo=vtiger.wsclient.response();var moduleNames=['Calendar','Events','Leads','Contacts','Accounts','Potentials','HelpDesk'];var tabs=vtiger.gadget._tabs=new gadgets.TabSet(__MODULE_ID__);for(var index=0;index<moduleNames.length;++index){var moduleLabel=vtiger.gadget._moduleLabel(moduleNames[index]);if(moduleLabel){tabs.addTab(moduleLabel,{callback:vtiger.gadget.tabSelected});}}
-vtiger.gadget.dismissMessage();vtiger.gadget.setSelectedTab(1);},tabSelected:function(){var tab=vtiger.gadget._tabs.getSelectedTab();var moduleLabel=tab.getName();var moduleName=vtiger.gadget._moduleNameWithLabel(moduleLabel);vtiger.gadget.showMessage('Loading '+moduleLabel+'...');var moduleQuery=vtiger.gadget._query(moduleName);if(moduleQuery){vtiger.gadget.showMessage('Loading '+moduleLabel+'...');vtiger.wsclient.query(moduleQuery,vtiger.gadget.processQueryResult);}},processQueryResult:function(){vtiger.gadget.dismissMessage();var tab=vtiger.gadget._tabs.getSelectedTab();var moduleLabel=tab.getName();var moduleName=vtiger.gadget._moduleNameWithLabel(moduleLabel);var records=vtiger.wsclient.response();var htmlContent="<div class='recordWrapper'><table width='100%' cellpadding=2 cellspacing=0>";for(var index=0;index<records.length;++index){htmlContent+=vtiger.gadget._recordRowUI(moduleName,records[index]);}
-htmlContent+="</table></div>";var tab=vtiger.gadget._tabs.getSelectedTab();$(tab.getContentContainer()).html(htmlContent);if(records.length>5){gadgets.window.adjustHeight();}}}</script>
+vtiger.gadget = {
+	
+	/** Utility functions */
+	sprintf : function() {
+		var printString = arguments[0];
+		for(var i = 1; i < arguments.length; ++i) {	
+			// Replace any %s, %d, %c with the variables.	
+			// TODO Format the argument w.r.t to format specifier	
+			printString = printString.replace(/(%[a-z]+)/, arguments[i]);
+		}	
+		return printString;
+	},
+
+	/** Gadget models */
+	_recordSelectionInfo : function(moduleName, buildQuery) {
+		if (typeof(buildQuery) == 'undefined') buildQuery = false;
+		
+		var querymap = {'primary': false, 'secondary': false, 'query': false};
+		/** Query map information */
+		// TODO Make the selection customizable
+		switch(moduleName) {
+			case 'Calendar': querymap['primary'] = 'subject'; querymap['secondary'] = 'taskstatus,date_start,time_start'; break;
+			case 'Events':   querymap['primary'] = 'subject'; querymap['secondary'] = 'eventstatus,date_start,time_start'; break;
+			
+			case 'Leads':    querymap['primary'] = 'lastname, firstname';    querymap['secondary'] = 'company'; break;
+			case 'Contacts': querymap['primary'] = 'lastname, firstname';    querymap['secondary'] = 'email'; break;
+			case 'Accounts': querymap['primary'] = 'accountname';            querymap['secondary'] = 'website'; break;
+			
+			case 'Potentials': querymap['primary'] = 'potentialname';    querymap['secondary'] = 'sales_stage,amount'; break;
+			
+			case 'HelpDesk': querymap['primary'] = 'ticket_title'; querymap['secondary'] = 'ticketstatus'; break;
+			
+			
+			
+		}
+		/** END */
+		if (querymap['primary']) {
+			var selectClause = querymap['primary'];
+			var orderbyClause = "ORDER BY modifiedtime DESC;";
+			if (querymap['secondary']) { selectClause += ',' + querymap['secondary']; }
+			querymap['query'] = vtiger.gadget.sprintf("SELECT %s FROM %s %s", selectClause, moduleName, orderbyClause);
+		}
+		return querymap;
+	},
+	
+	_describeInfo : false,
+	_moduleNames : function() {
+		return vtiger.gadget._describeInfo['types'];
+	},
+	_moduleLabel : function(name) {
+		return vtiger.gadget._describeInfo['information'][name]['label'];
+	},
+	_moduleNameWithLabel : function(label) {
+		for( var moduleName in vtiger.gadget._describeInfo['information']) {
+			if (vtiger.gadget._describeInfo['information'][moduleName]['label'] == label) {
+				return moduleName;
+			}
+		}
+		return false;
+	},
+	_query : function(moduleName) {
+		var queryInfo = vtiger.gadget._recordSelectionInfo(moduleName, true);
+		if (queryInfo) return queryInfo['query'];
+		return false;
+	},
+	_recordRowUI : function(moduleName, record) {
+		var recordId = record['id'].split('x')[1];
+		var selectionInfo = vtiger.gadget._recordSelectionInfo(moduleName);		
+		var recordDetailViewLink = vtiger.gadget._getPref('_vturl') + 
+			vtiger.gadget.sprintf('/index.php?module=%s&action=DetailView&record=%s', moduleName, recordId);
+			
+		var titleFields = selectionInfo['primary'].split(',');
+		var subtitleFields = selectionInfo['secondary']? selectionInfo['secondary'].split(',') : [];
+		
+		var recordTitleValue = '', recordSubTitleValue = '';
+		for (var index = 0; index< titleFields.length; ++index) recordTitleValue += ' ' + record[titleFields[index].trim()];
+		for (var index = 0; index< subtitleFields.length; ++index) recordSubTitleValue += ' ' + record[subtitleFields[index].trim()];
+		
+		var ui = '';
+		if (subtitleFields.length) {
+			ui = vtiger.gadget.sprintf( 
+			"<tr><td width='90%' align='left'><a href='%s' target='_blank'>%s</a></td><td align='right' width='10%' nowrap='nowrap'>%s</td></tr>",
+				recordDetailViewLink, recordTitleValue.trim(), recordSubTitleValue.trim() );
+		} else {
+			ui = vtiger.gadget.sprintf( 
+			"<tr><td width='100%' align='left'><a href='%s' target='_blank'>%s</a></td></tr>",
+				recordDetailViewLink, recordTitleValue.trim() );
+		}
+		return ui;
+	},
+	
+	/** Gadget controllers */
+	_messageDiv : function(state) {
+		var message_div = $('#message_div');
+		if (message_div.length == 0) {
+			message_div = document.createElement('div');
+			message_div.id = 'message_div';
+			message_div.style.position = 'absolute';
+			message_div.style.padding = '2px';
+			message_div.style.margin = 0;
+			message_div.style.top = message_div.style.right = '1px';
+			message_div.style.backgroundColor = '#AF0400';
+			message_div.style.color = 'white';
+			message_div.style.fontSize = '11px';
+			document.body.appendChild(message_div);
+			message_div = $('#message_div');
+		}
+		if (state) message_div.show();
+		else message_div.hide();
+		return message_div;
+	},
+	showMessage : function(message) {
+		vtiger.gadget._messageDiv(true).html(message);
+	},	
+	dismissMessage : function() {
+		vtiger.gadget._messageDiv(false).html('');
+	},	
+	init : function() {
+		vtiger.gadget.showMessage( "Loading..." );
+		vtiger.wsclient.listTypes( vtiger.gadget.prepareTabs );
+	},
+	
+	_pref : false,
+	_getPref : function(key) {
+		if (vtiger.gadget._pref == false) vtiger.gadget._pref = new gadgets.Prefs();
+		return vtiger.gadget._pref.getString(key);
+	},
+	
+	_tabs : false,
+	prepareTabs : function() {
+		vtiger.gadget._describeInfo = vtiger.wsclient.response();
+		
+		// TODO Provide option to select the modules?
+		//var moduleNames = vtiger.gadget._moduleNames();		
+		var moduleNames = [ 'Calendar', 'Events', 'Leads', 'Contacts', 'Accounts', 'Potentials', 'HelpDesk' ];
+		
+		var tabs = vtiger.gadget._tabs = new gadgets.TabSet(__MODULE_ID__);
+		
+		for (var index = 0; index < moduleNames.length; ++index) {
+			var moduleLabel = vtiger.gadget._moduleLabel(moduleNames[index]);
+			if (moduleLabel) {
+				tabs.addTab(moduleLabel, { callback: vtiger.gadget.tabSelected } );
+			}
+		}
+		vtiger.gadget.dismissMessage();
+		// NOTE: setSelectedTab(0) does not trigger any action!
+		//vtiger.gadget.tabSelected();
+		vtiger.gadget.setSelectedTab(1);
+	},
+	tabSelected : function() {
+		var tab = vtiger.gadget._tabs.getSelectedTab();
+		var moduleLabel = tab.getName();
+		var moduleName = vtiger.gadget._moduleNameWithLabel(moduleLabel);
+		vtiger.gadget.showMessage('Loading ' + moduleLabel + '...');
+		var moduleQuery = vtiger.gadget._query(moduleName);
+		if (moduleQuery) {
+			vtiger.gadget.showMessage('Loading ' + moduleLabel + '...');
+			vtiger.wsclient.query( moduleQuery, vtiger.gadget.processQueryResult );
+		}
+	},
+	processQueryResult : function() {
+		vtiger.gadget.dismissMessage();
+		
+		var tab = vtiger.gadget._tabs.getSelectedTab();
+		var moduleLabel = tab.getName();
+		var moduleName = vtiger.gadget._moduleNameWithLabel(moduleLabel);
+		
+		var records = vtiger.wsclient.response();
+		var htmlContent = "<div class='recordWrapper'><table width='100%' cellpadding=2 cellspacing=0>";
+		for( var index = 0; index < records.length; ++index ) {
+			htmlContent +=  vtiger.gadget._recordRowUI( moduleName, records[index]);
+		}
+		htmlContent += "</table></div>";
+		var tab = vtiger.gadget._tabs.getSelectedTab();
+		
+		$(tab.getContentContainer()).html(htmlContent);
+		if (records.length > 5) {
+			gadgets.window.adjustHeight();
+		}
+	}
+}</script>
       <script type="text/javascript">
       function init() {
       	var prefs = new gadgets.Prefs();
