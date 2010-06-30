@@ -407,8 +407,10 @@ vtiger.gadget = {
       <script type="text/javascript">
       function init() {
       	var prefs = new gadgets.Prefs();
-      	vtiger.gadget.showMessage( "Connecting..." );
-      	vtiger.wsclient.init( prefs.getString('_vturl'), prefs.getString('_vtusername'), prefs.getString('_vtpassword'), vtiger.gadget.init);
+      	if (prefs.getString('_vturl').length) {
+	      	vtiger.gadget.showMessage( "Connecting..." );
+    	  	vtiger.wsclient.init( prefs.getString('_vturl'), prefs.getString('_vtusername'), prefs.getString('_vtpassword'), vtiger.gadget.init);
+      	}
       }
       gadgets.util.registerOnLoadHandler(init);
       </script>
