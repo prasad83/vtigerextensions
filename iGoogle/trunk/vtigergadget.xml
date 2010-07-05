@@ -9,7 +9,8 @@
 -->
   <ModulePrefs title="vtiger CRM Gadget" 
   height="200" width="200" author="vtiger" author_email="info@vtiger.com" description="iGoogle Gadget for vtiger CRM"
-  thumbnail="http://www.vtiger.com/images/vtigerlogo.jpg">
+  thumbnail="http://www.vtiger.com/images/vtigerlogo.jpg" screenshot="http://www.vtiger.com/images/vtigerlogo.jpg" 
+  title_url="http://www.vtiger.com">
   	<Require feature="tabs"/>
   	<Require feature="dynamic-height"/>
   	<Require feature="setprefs"/>
